@@ -15,6 +15,8 @@ import (
 var (
 	gpuMemory uint
 	metric    MemoryUnit
+	gpuUtil  uint
+	memUtil  uint
 )
 
 func check(err error) {
@@ -44,6 +46,26 @@ func getGPUMemory() uint {
 	return gpuMemory
 }
 
+func setGpuUtil (raw uint) {
+	v:= raw
+	gpuUtil = v
+	log.Infof("set gpu utilization: %d", gpuUtil)
+}
+
+func getGpuUtil () uint {
+	return gpuUtil
+}
+
+func setMemUtil (raw uint) {
+	v:= raw
+	memUtil = v
+	log.Infof("set mem utilization: %d", memUtil)
+}
+
+func getMemUtil () uint {
+	return memUtil
+}
+
 func getDeviceCount() uint {
 	n, err := nvml.GetDeviceCount()
 	check(err)
@@ -69,6 +91,24 @@ func getDevices() ([]*pluginapi.Device, map[string]uint) {
 		log.Infof("# device Memory: %d", uint(*d.Memory))
 		if getGPUMemory() == uint(0) {
 			setGPUMemory(uint(*d.Memory))
+		}
+		status, err := d.Status()
+		check(err)
+		memUtil := 0
+		if status.Utilization.Memory == nil {
+			log.Infof("device gpu memory util is nil")
+			setMemUtil(uint(memUtil))
+		}else{
+			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
+			setMemUtil(uint(*status.Utilization.Memory))
+		}
+		gpuUtil:=0
+		if status.Utilization.Memory == nil {
+			log.Infof("device gpu memory util is nil")
+			setGpuUtil(uint(gpuUtil))
+		}else{
+			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
+			setGpuUtil(uint(*status.Utilization.Memory))
 		}
 		for j := uint(0); j < getGPUMemory(); j++ {
 			fakeID := generateFakeDeviceID(d.UUID, j)
