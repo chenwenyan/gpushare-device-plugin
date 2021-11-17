@@ -3,8 +3,8 @@ package nvidia
 import (
 	"encoding/json"
 	"fmt"
-	"gpushare-device-plugin/pkg/kubelet/client"
 	log "github.com/golang/glog"
+	"gpushare-device-plugin/pkg/kubelet/client"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,6 +94,62 @@ func patchGPUCount(gpuCount int) error {
 		log.Infof("Failed to update Capacity %s.", resourceCount)
 	} else {
 		log.Infof("Updated Capacity %s successfully.", resourceCount)
+	}
+	return err
+}
+
+//TODO: patch GPU utilization
+func patchGPUUtil(gpuUtil int) error {
+	node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if val, ok := node.Status.Capacity[gpuUtilization]; ok {
+		if val.Value() == int64(gpuUtil) {
+			log.Infof("No need to update Capacity %s", gpuUtil)
+			return nil
+		}
+	}
+
+	newNode := node.DeepCopy()
+	newNode.Status.Capacity[gpuUtilization] = *resource.NewQuantity(int64(gpuUtil), resource.DecimalSI)
+	newNode.Status.Allocatable[gpuUtilization] = *resource.NewQuantity(int64(gpuUtil), resource.DecimalSI)
+	// content := fmt.Sprintf(`[{"op": "add", "path": "/status/capacity/aliyun.com~gpu-count", "value": "%d"}]`, gpuCount)
+	// _, err = clientset.CoreV1().Nodes().PatchStatus(nodeName, []byte(content))
+	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
+	if err != nil {
+		log.Infof("Failed to update Capacity %s.", gpuUtilization)
+	} else {
+		log.Infof("Updated Capacity %s successfully.", gpuUtilization)
+	}
+	return err
+}
+
+//TODO: patch GPU memory utilization
+func patchMemUtil(memUtil int) error {
+	node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if val, ok := node.Status.Capacity[memUtilization]; ok {
+		if val.Value() == int64(memUtil) {
+			log.Infof("No need to update Capacity %s", memUtil)
+			return nil
+		}
+	}
+
+	newNode := node.DeepCopy()
+	newNode.Status.Capacity[memUtilization] = *resource.NewQuantity(int64(memUtil), resource.DecimalSI)
+	newNode.Status.Allocatable[memUtilization] = *resource.NewQuantity(int64(memUtil), resource.DecimalSI)
+	// content := fmt.Sprintf(`[{"op": "add", "path": "/status/capacity/aliyun.com~gpu-count", "value": "%d"}]`, gpuCount)
+	// _, err = clientset.CoreV1().Nodes().PatchStatus(nodeName, []byte(content))
+	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
+	if err != nil {
+		log.Infof("Failed to update Capacity %s.", memUtilization)
+	} else {
+		log.Infof("Updated Capacity %s successfully.", memUtilization)
 	}
 	return err
 }

@@ -15,8 +15,9 @@ import (
 var (
 	gpuMemory uint
 	metric    MemoryUnit
-	gpuUtil  uint
-	memUtil  uint
+	gpuUtil   uint
+	memUtil   uint
+	process   *[]nvml.ProcessInfo
 )
 
 func check(err error) {
@@ -46,25 +47,36 @@ func getGPUMemory() uint {
 	return gpuMemory
 }
 
-func setGpuUtil (raw uint) {
-	v:= raw
+func setGPUUtil(raw uint) {
+	v := raw
 	gpuUtil = v
 	log.Infof("set gpu utilization: %d", gpuUtil)
 }
 
-func getGpuUtil () uint {
+func getGPUUtil() uint {
 	return gpuUtil
 }
 
-func setMemUtil (raw uint) {
-	v:= raw
+func setMemUtil(raw uint) {
+	v := raw
 	memUtil = v
 	log.Infof("set mem utilization: %d", memUtil)
 }
 
-func getMemUtil () uint {
+func getMemUtil() uint {
 	return memUtil
 }
+
+// TODO: get set Process of this device
+//func setProcesses (raw *[]nvml.ProcessInfo) {
+//	v:= raw
+//	process = v
+//	log.Infof("set mem Processes: %+v", process)
+//}
+//
+//func getProcesses () *[]nvml.ProcessInfo {
+//	return process
+//}
 
 func getDeviceCount() uint {
 	n, err := nvml.GetDeviceCount()
@@ -98,18 +110,26 @@ func getDevices() ([]*pluginapi.Device, map[string]uint) {
 		if status.Utilization.Memory == nil {
 			log.Infof("device gpu memory util is nil")
 			setMemUtil(uint(memUtil))
-		}else{
+		} else {
 			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
 			setMemUtil(uint(*status.Utilization.Memory))
 		}
-		gpuUtil:=0
+		gpuUtil := 0
 		if status.Utilization.Memory == nil {
 			log.Infof("device gpu memory util is nil")
-			setGpuUtil(uint(gpuUtil))
-		}else{
+			setGPUUtil(uint(gpuUtil))
+		} else {
 			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
-			setGpuUtil(uint(*status.Utilization.Memory))
+			setGPUUtil(uint(*status.Utilization.Memory))
 		}
+		//process := []
+		//if status.Processes == nil {
+		//	log.Infof("device gpu process is nil")
+		//	setProcesses(process)
+		//}else{
+		//	log.Infof("# device process %+v", (*status.Processes))
+		//	setProcesses((*status.Processes))
+		//}
 		for j := uint(0); j < getGPUMemory(); j++ {
 			fakeID := generateFakeDeviceID(d.UUID, j)
 			if j == 0 {

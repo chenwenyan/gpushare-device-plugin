@@ -21,6 +21,8 @@ const (
 	envPodGPUMemory        = "ALIYUN_COM_GPU_MEM_POD"
 	envTOTALGPUMEMORY      = "ALIYUN_COM_GPU_MEM_DEV"
 	gpushareAllocationFlag = "scheduler.framework.gpushare.allocation"
+	gpuUtilization         = "aliyun.com/gpu-util"
+	memUtilization         = "aliyun.com/emm-util"
 )
 
 func init() {

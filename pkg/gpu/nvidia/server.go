@@ -50,6 +50,14 @@ func NewNvidiaDevicePlugin(mps, healthCheck, queryKubelet bool, client *client.K
 	if err != nil {
 		return nil, err
 	}
+	err = patchGPUUtil(len(devList))
+	if err != nil {
+		return nil, err
+	}
+	err = patchMemUtil(len(devList))
+	if err != nil {
+		return nil, err
+	}
 	disableCGPUIsolation, err := disableCGPUIsolationOrNot()
 	if err != nil {
 		return nil, err

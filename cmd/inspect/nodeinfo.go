@@ -16,6 +16,8 @@ type DeviceInfo struct {
 	pods        []v1.Pod
 	usedGPUMem  int
 	totalGPUMem int
+	curGPUUtil  int
+	curMemUtil  int
 	node        v1.Node
 }
 
