@@ -58,7 +58,7 @@ func (ngm *sharedGPUManager) Run() error {
 
 	restart := true
 	var devicePlugin *NvidiaDevicePlugin
-
+	var deviceUtilPlugin *NvidiaDevicePlugin
 L:
 	for {
 		if restart {
@@ -67,10 +67,13 @@ L:
 			}
 
 			devicePlugin, err = NewNvidiaDevicePlugin(ngm.enableMPS, ngm.healthCheck, ngm.queryKubelet, ngm.kubeletClient)
+			deviceUtilPlugin, err = NewNvidiaDeviceUtil(ngm.enableMPS, ngm.healthCheck, ngm.queryKubelet, ngm.kubeletClient)
 			if err != nil {
 				log.Warningf("Failed to get device plugin due to %v", err)
 			} else if err = devicePlugin.Serve(); err != nil {
 				log.Warningf("Failed to start device plugin due to %v", err)
+			} else if err = deviceUtilPlugin.Serve(); err != nil {
+				log.Warningf("Failed to start device util plugin due to %v", err)
 			} else {
 				restart = false
 			}

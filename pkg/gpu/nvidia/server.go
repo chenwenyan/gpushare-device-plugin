@@ -50,7 +50,38 @@ func NewNvidiaDevicePlugin(mps, healthCheck, queryKubelet bool, client *client.K
 	if err != nil {
 		return nil, err
 	}
-	err = patchGPUUtil(len(devList))
+	disableCGPUIsolation, err := disableCGPUIsolationOrNot()
+	if err != nil {
+		return nil, err
+	}
+	return &NvidiaDevicePlugin{
+		devs:                 devs,
+		realDevNames:         devList,
+		devNameMap:           devNameMap,
+		socket:               serverSock,
+		mps:                  mps,
+		healthCheck:          healthCheck,
+		disableCGPUIsolation: disableCGPUIsolation,
+		stop:                 make(chan struct{}),
+		health:               make(chan *pluginapi.Device),
+		queryKubelet:         queryKubelet,
+		kubeletClient:        client,
+	}, nil
+}
+
+//TODO: update GPU utilization for a certain time interval
+func NewNvidiaDeviceUtil(mps, healthCheck, queryKubelet bool, client *client.KubeletClient) (*NvidiaDevicePlugin, error) {
+	devs, devNameMap := getDevices()
+	devList := []string{}
+
+	for dev, _ := range devNameMap {
+		devList = append(devList, dev)
+	}
+
+	log.Infof("Device Map: %v", devNameMap)
+	log.Infof("Device List: %v", devList)
+
+	err := patchGPUUtil(len(devList))
 	if err != nil {
 		return nil, err
 	}

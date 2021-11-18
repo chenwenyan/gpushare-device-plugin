@@ -17,7 +17,7 @@ var (
 	metric    MemoryUnit
 	gpuUtil   uint
 	memUtil   uint
-	process   *[]nvml.ProcessInfo
+	process   []nvml.ProcessInfo
 )
 
 func check(err error) {
@@ -68,15 +68,15 @@ func getMemUtil() uint {
 }
 
 // TODO: get set Process of this device
-//func setProcesses (raw *[]nvml.ProcessInfo) {
-//	v:= raw
-//	process = v
-//	log.Infof("set mem Processes: %+v", process)
-//}
-//
-//func getProcesses () *[]nvml.ProcessInfo {
-//	return process
-//}
+func setProcesses(raw []nvml.ProcessInfo) {
+	v := raw
+	process = v
+	log.Infof("set mem Processes: %+v", process)
+}
+
+func getProcesses() []nvml.ProcessInfo {
+	return process
+}
 
 func getDeviceCount() uint {
 	n, err := nvml.GetDeviceCount()
@@ -122,14 +122,14 @@ func getDevices() ([]*pluginapi.Device, map[string]uint) {
 			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
 			setGPUUtil(uint(*status.Utilization.Memory))
 		}
-		//process := []
-		//if status.Processes == nil {
-		//	log.Infof("device gpu process is nil")
-		//	setProcesses(process)
-		//}else{
-		//	log.Infof("# device process %+v", (*status.Processes))
-		//	setProcesses((*status.Processes))
-		//}
+		var process []nvml.ProcessInfo
+		if status.Processes == nil {
+			log.Infof("device gpu process is nil")
+			setProcesses(process)
+		} else {
+			log.Infof("# device process %+v", status.Processes)
+			setProcesses(status.Processes)
+		}
 		for j := uint(0); j < getGPUMemory(); j++ {
 			fakeID := generateFakeDeviceID(d.UUID, j)
 			if j == 0 {
