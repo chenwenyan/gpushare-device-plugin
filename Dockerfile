@@ -1,6 +1,6 @@
 FROM golang:1.10-stretch as build
 
-WORKDIR /home/wychen/gpu_scheduler/gpushare-device-plugin
+WORKDIR /go/src/gpushare-device-plugin
 COPY . .
 
 RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && \
