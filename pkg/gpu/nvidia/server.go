@@ -81,6 +81,15 @@ func NewNvidiaDeviceUtil(mps, healthCheck, queryKubelet bool, client *client.Kub
 	log.Infof("Device Map: %v", devNameMap)
 	log.Infof("Device List: %v", devList)
 
+	var gpuUtils []int
+	var memUtils []int
+	for item := range devs {
+		//gpuUtils = append(gpuUtils, item.Utilization.GPU)
+		//memUtils = append(memUtils, item.Utilization.GPU)
+		gpuUtils = append(gpuUtils, item)
+		memUtils = append(memUtils, item)
+	}
+
 	err := patchGPUUtil(len(devList))
 	if err != nil {
 		return nil, err
