@@ -52,18 +52,29 @@ func NewNvidiaDevicePlugin(mps, healthCheck, queryKubelet bool, client *client.K
 	if err != nil {
 		return nil, err
 	}
-	var GPUUtils []int
-	var MemUtils []int
+
+	var GPUMemCapacity, GPUMemUsed, GPUUtils, MemUtils []int
 	var Processes [][]uint
+
 	for _, item := range gpuStatus {
+		GPUMemCapacity = append(GPUMemCapacity, int(item.memCapacity))
+		GPUMemUsed = append(GPUMemUsed, int(item.memUsed))
 		GPUUtils = append(GPUUtils, int(item.gpuUtil))
 		MemUtils = append(MemUtils, int(item.memUtil))
 		Processes = append(Processes, item.process)
+		Processes = append(Processes, item.process)
 	}
 
+	log.Infof("gpu memory capacity: %v", GPUMemCapacity)
+	log.Infof("gpu memory used: %v", GPUMemUsed)
 	log.Infof("gpu utils: %v", GPUUtils)
 	log.Infof("mem utils: %v", MemUtils)
 	log.Infof("gpu Processes: %v", Processes)
+
+	err = patchGPUMemory(GPUMemCapacity, GPUMemUsed)
+	if err != nil {
+		return nil, err
+	}
 
 	err = patchGPUUtil(GPUUtils)
 	if err != nil {

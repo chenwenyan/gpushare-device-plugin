@@ -18,10 +18,12 @@ var (
 )
 
 type GPUStatus struct {
-	UID     uint
-	gpuUtil uint
-	memUtil uint
-	process []uint
+	UID         uint
+	memCapacity uint
+	memUsed     uint
+	gpuUtil     uint
+	memUtil     uint
+	process     []uint
 }
 
 func check(err error) {
@@ -91,12 +93,14 @@ func getDevices() ([]*pluginapi.Device, map[string]uint, []GPUStatus) {
 				processPids = append(processPids, pid)
 			}
 		}
-
+		memCapacity := uint(*status.Memory.Global.Free) + uint(*status.Memory.Global.Used)
 		gpuStatus = append(gpuStatus, GPUStatus{
-			UID:     id,
-			gpuUtil: uint(*status.Utilization.GPU),
-			memUtil: uint(*status.Utilization.Memory),
-			process: processPids,
+			UID:         id,
+			memCapacity: memCapacity,
+			memUsed:     uint(*status.Memory.Global.Used),
+			gpuUtil:     uint(*status.Utilization.GPU),
+			memUtil:     uint(*status.Utilization.Memory),
+			process:     processPids,
 		})
 
 		for j := uint(0); j < getGPUMemory(); j++ {

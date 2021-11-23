@@ -99,6 +99,42 @@ func patchGPUCount(gpuCount int) error {
 	return err
 }
 
+//TODO patch GPU memory capacity and used
+func patchGPUMemory(gpuMemCapacity []int, gpuMemUsed []int) error {
+	node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if val, ok := node.Status.Capacity[gpu0MemCapacity]; ok {
+		if val.Value() == int64(gpuMemCapacity[0]) {
+			log.Infof("No need to update Capacity %s", gpu0MemCapacity)
+			return nil
+		}
+	}
+	newNode := node.DeepCopy()
+	newNode.Status.Capacity[gpu0MemCapacity] = *resource.NewQuantity(int64(gpuMemCapacity[0]), resource.DecimalSI)
+	newNode.Status.Allocatable[gpu0MemUsed] = *resource.NewQuantity(int64(gpuMemUsed[0]), resource.DecimalSI)
+
+	if len(gpuMemCapacity) > 1 {
+		if val, ok := node.Status.Capacity[gpu1MemCapacity]; ok {
+			if val.Value() == int64(gpuMemCapacity[1]) {
+				log.Infof("No need to update Capacity %s", gpu1MemCapacity)
+				return nil
+			}
+		}
+		newNode.Status.Capacity[gpu1MemCapacity] = *resource.NewQuantity(int64(gpuMemCapacity[1]), resource.DecimalSI)
+		newNode.Status.Allocatable[gpu1MemUsed] = *resource.NewQuantity(int64(gpuMemUsed[1]), resource.DecimalSI)
+	}
+	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
+	if err != nil {
+		log.Infof("Failed to update capacity %s.", gpu0MemCapacity)
+	} else {
+		log.Infof("Updated capacity %s successfully.", gpu0MemUsed)
+	}
+	return err
+}
+
 //TODO: patch GPU utilization
 func patchGPUUtil(gpuUtil []int) error {
 	log.Infof("# : patch gpu util: %v", gpuUtil)
@@ -115,8 +151,7 @@ func patchGPUUtil(gpuUtil []int) error {
 		}
 	}
 	newNode := node.DeepCopy()
-	newNode.Status.Capacity[gpu0Utilization] = *resource.NewQuantity(100, resource.DecimalSI)
-	newNode.Status.Allocatable[gpu0Utilization] = *resource.NewQuantity(int64(100-gpuUtil[0]), resource.DecimalSI)
+	newNode.Status.Allocatable[gpu0Utilization] = *resource.NewQuantity(int64(gpuUtil[0]), resource.DecimalSI)
 
 	if len(gpuUtil) > 1 {
 		if val, ok := node.Status.Allocatable[gpu1Utilization]; ok {
@@ -125,8 +160,7 @@ func patchGPUUtil(gpuUtil []int) error {
 				return nil
 			}
 		}
-		newNode.Status.Capacity[gpu1Utilization] = *resource.NewQuantity(100, resource.DecimalSI)
-		newNode.Status.Allocatable[gpu1Utilization] = *resource.NewQuantity(int64(100-gpuUtil[1]), resource.DecimalSI)
+		newNode.Status.Allocatable[gpu1Utilization] = *resource.NewQuantity(int64(gpuUtil[1]), resource.DecimalSI)
 	}
 
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
@@ -155,8 +189,7 @@ func patchMemUtil(memUtil []int) error {
 	}
 
 	newNode := node.DeepCopy()
-	newNode.Status.Capacity[mem0Utilization] = *resource.NewQuantity(100, resource.DecimalSI)
-	newNode.Status.Allocatable[mem0Utilization] = *resource.NewQuantity(int64(100-memUtil[0]), resource.DecimalSI)
+	newNode.Status.Allocatable[mem0Utilization] = *resource.NewQuantity(int64(memUtil[0]), resource.DecimalSI)
 	if len(memUtil) > 1 {
 		if val, ok := node.Status.Allocatable[mem1Utilization]; ok {
 			if (100 - val.Value()) == (100 - int64(memUtil[1])) {
@@ -164,8 +197,7 @@ func patchMemUtil(memUtil []int) error {
 				return nil
 			}
 		}
-		newNode.Status.Capacity[mem1Utilization] = *resource.NewQuantity(100, resource.DecimalSI)
-		newNode.Status.Allocatable[mem1Utilization] = *resource.NewQuantity(int64(100-memUtil[1]), resource.DecimalSI)
+		newNode.Status.Allocatable[mem1Utilization] = *resource.NewQuantity(int64(memUtil[1]), resource.DecimalSI)
 	}
 
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
@@ -192,7 +224,7 @@ func patchProcesses(GPUProcess [][]uint) error {
 		}
 	}
 	newNode := node.DeepCopy()
-	newNode.Labels[gpu0Processes] = string(GPUProcessJson)
+	newNode.Annotations[gpu0Processes] = string(GPUProcessJson)
 
 	if len(GPUProcess) > 1 {
 		GPU1ProcessJson, _ := json.Marshal(GPUProcess[1])
@@ -202,7 +234,7 @@ func patchProcesses(GPUProcess [][]uint) error {
 				return nil
 			}
 		}
-		newNode.Labels[gpu1Processes] = string(GPU1ProcessJson)
+		newNode.Annotations[gpu1Processes] = string(GPU1ProcessJson)
 	}
 
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
