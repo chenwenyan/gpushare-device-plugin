@@ -19,6 +19,7 @@ import (
 type NvidiaDevicePlugin struct {
 	devs                 []*pluginapi.Device
 	realDevNames         []string
+	gpuStatus            []GPUStatus
 	devNameMap           map[string]uint
 	devIndxMap           map[uint]string
 	socket               string
@@ -36,7 +37,7 @@ type NvidiaDevicePlugin struct {
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
 func NewNvidiaDevicePlugin(mps, healthCheck, queryKubelet bool, client *client.KubeletClient) (*NvidiaDevicePlugin, error) {
-	devs, devNameMap := getDevices()
+	devs, devNameMap, gpuStatus := getDevices()
 	devList := []string{}
 
 	for dev, _ := range devNameMap {
@@ -45,56 +46,34 @@ func NewNvidiaDevicePlugin(mps, healthCheck, queryKubelet bool, client *client.K
 
 	log.Infof("Device Map: %v", devNameMap)
 	log.Infof("Device List: %v", devList)
+	log.Infof("gpu Status: %v", gpuStatus)
 
 	err := patchGPUCount(len(devList))
 	if err != nil {
 		return nil, err
 	}
-	disableCGPUIsolation, err := disableCGPUIsolationOrNot()
+	var GPUUtils []int
+	var MemUtils []int
+	var Processes [][]uint
+	for _, item := range gpuStatus {
+		GPUUtils = append(GPUUtils, int(item.gpuUtil))
+		MemUtils = append(MemUtils, int(item.memUtil))
+		Processes = append(Processes, item.process)
+	}
+
+	log.Infof("gpu utils: %v", GPUUtils)
+	log.Infof("mem utils: %v", MemUtils)
+	log.Infof("gpu Processes: %v", Processes)
+
+	err = patchGPUUtil(GPUUtils)
 	if err != nil {
 		return nil, err
 	}
-	return &NvidiaDevicePlugin{
-		devs:                 devs,
-		realDevNames:         devList,
-		devNameMap:           devNameMap,
-		socket:               serverSock,
-		mps:                  mps,
-		healthCheck:          healthCheck,
-		disableCGPUIsolation: disableCGPUIsolation,
-		stop:                 make(chan struct{}),
-		health:               make(chan *pluginapi.Device),
-		queryKubelet:         queryKubelet,
-		kubeletClient:        client,
-	}, nil
-}
-
-//TODO: update GPU utilization for a certain time interval
-func NewNvidiaDeviceUtil(mps, healthCheck, queryKubelet bool, client *client.KubeletClient) (*NvidiaDevicePlugin, error) {
-	devs, devNameMap := getDevices()
-	devList := []string{}
-
-	for dev, _ := range devNameMap {
-		devList = append(devList, dev)
-	}
-
-	log.Infof("Device Map: %v", devNameMap)
-	log.Infof("Device List: %v", devList)
-
-	var gpuUtils []int
-	var memUtils []int
-	for item := range devs {
-		//gpuUtils = append(gpuUtils, item.Utilization.GPU)
-		//memUtils = append(memUtils, item.Utilization.GPU)
-		gpuUtils = append(gpuUtils, item)
-		memUtils = append(memUtils, item)
-	}
-
-	err := patchGPUUtil(len(devList))
+	err = patchMemUtil(MemUtils)
 	if err != nil {
 		return nil, err
 	}
-	err = patchMemUtil(len(devList))
+	err = patchProcesses(Processes)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +84,7 @@ func NewNvidiaDeviceUtil(mps, healthCheck, queryKubelet bool, client *client.Kub
 	return &NvidiaDevicePlugin{
 		devs:                 devs,
 		realDevNames:         devList,
+		gpuStatus:            gpuStatus,
 		devNameMap:           devNameMap,
 		socket:               serverSock,
 		mps:                  mps,

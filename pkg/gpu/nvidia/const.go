@@ -8,10 +8,14 @@ import (
 type MemoryUnit string
 
 const (
-	resourceName   = "aliyun.com/gpu-mem"
-	resourceCount  = "aliyun.com/gpu-count"
-	gpuUtilization = "aliyun.com/gpu-util"
-	memUtilization = "aliyun.com/mem-util"
+	resourceName    = "aliyun.com/gpu-mem"
+	resourceCount   = "aliyun.com/gpu-count"
+	gpu0Utilization = "aliyun.com/gpu0-util"
+	mem0Utilization = "aliyun.com/mem0-util"
+	gpu1Utilization = "aliyun.com/gpu1-util"
+	mem1Utilization = "aliyun.com/mem1-util"
+	gpu0Processes   = "aliyun.com/gpu0-processes"
+	gpu1Processes   = "aliyun.com/gpu1-processes"
 
 	serverSock = pluginapi.DevicePluginPath + "aliyungpushare.sock"
 

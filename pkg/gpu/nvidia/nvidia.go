@@ -15,10 +15,14 @@ import (
 var (
 	gpuMemory uint
 	metric    MemoryUnit
-	gpuUtil   uint
-	memUtil   uint
-	process   []nvml.ProcessInfo
 )
+
+type GPUStatus struct {
+	UID     uint
+	gpuUtil uint
+	memUtil uint
+	process []uint
+}
 
 func check(err error) {
 	if err != nil {
@@ -47,49 +51,20 @@ func getGPUMemory() uint {
 	return gpuMemory
 }
 
-func setGPUUtil(raw uint) {
-	v := raw
-	gpuUtil = v
-	log.Infof("set gpu utilization: %d", gpuUtil)
-}
-
-func getGPUUtil() uint {
-	return gpuUtil
-}
-
-func setMemUtil(raw uint) {
-	v := raw
-	memUtil = v
-	log.Infof("set mem utilization: %d", memUtil)
-}
-
-func getMemUtil() uint {
-	return memUtil
-}
-
-// TODO: get set Process of this device
-func setProcesses(raw []nvml.ProcessInfo) {
-	v := raw
-	process = v
-	log.Infof("set mem Processes: %+v", process)
-}
-
-func getProcesses() []nvml.ProcessInfo {
-	return process
-}
-
 func getDeviceCount() uint {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 	return n
 }
 
-func getDevices() ([]*pluginapi.Device, map[string]uint) {
+func getDevices() ([]*pluginapi.Device, map[string]uint, []GPUStatus) {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
 	var devs []*pluginapi.Device
 	realDevNames := map[string]uint{}
+	gpuStatus := []GPUStatus{}
+
 	for i := uint(0); i < n; i++ {
 		d, err := nvml.NewDevice(i)
 		check(err)
@@ -100,36 +75,30 @@ func getDevices() ([]*pluginapi.Device, map[string]uint) {
 		check(err)
 		realDevNames[d.UUID] = id
 		// var KiB uint64 = 1024
-		log.Infof("# device Memory: %d", uint(*d.Memory))
+		log.Infof("# device Memory: %T", uint(*d.Memory))
 		if getGPUMemory() == uint(0) {
 			setGPUMemory(uint(*d.Memory))
 		}
 		status, err := d.Status()
 		check(err)
-		memUtil := 0
-		if status.Utilization.Memory == nil {
-			log.Infof("device gpu memory util is nil")
-			setMemUtil(uint(memUtil))
-		} else {
-			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
-			setMemUtil(uint(*status.Utilization.Memory))
+
+		// GPU util and Mem util
+		var processPids []uint
+		for _, item := range status.Processes {
+			log.Infof("# process: %T", item.Type.String())
+			if item.Type.String() == "C" {
+				pid := item.PID
+				processPids = append(processPids, pid)
+			}
 		}
-		gpuUtil := 0
-		if status.Utilization.Memory == nil {
-			log.Infof("device gpu memory util is nil")
-			setGPUUtil(uint(gpuUtil))
-		} else {
-			log.Infof("# device gpu memory util %d", uint(*status.Utilization.Memory))
-			setGPUUtil(uint(*status.Utilization.Memory))
-		}
-		var process []nvml.ProcessInfo
-		if status.Processes == nil {
-			log.Infof("device gpu process is nil")
-			setProcesses(process)
-		} else {
-			log.Infof("# device process %+v", status.Processes)
-			setProcesses(status.Processes)
-		}
+
+		gpuStatus = append(gpuStatus, GPUStatus{
+			UID:     id,
+			gpuUtil: uint(*status.Utilization.GPU),
+			memUtil: uint(*status.Utilization.Memory),
+			process: processPids,
+		})
+
 		for j := uint(0); j < getGPUMemory(); j++ {
 			fakeID := generateFakeDeviceID(d.UUID, j)
 			if j == 0 {
@@ -145,7 +114,7 @@ func getDevices() ([]*pluginapi.Device, map[string]uint) {
 		}
 	}
 
-	return devs, realDevNames
+	return devs, realDevNames, gpuStatus
 }
 
 func deviceExists(devs []*pluginapi.Device, id string) bool {
@@ -166,7 +135,6 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, realDeviceID)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Infof("Warning: %s (%s) is too old to support healthchecking: %s. Marking it unhealthy.", realDeviceID, d.ID, err)
-
 			xids <- d
 			continue
 		}
