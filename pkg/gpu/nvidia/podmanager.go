@@ -100,37 +100,37 @@ func patchGPUCount(gpuCount int) error {
 }
 
 //TODO patch GPU memory capacity and used
-func patchGPUMemory(gpuMemCapacity []int, gpuMemUsed []int) error {
+func patchGPUMemory(gpuMemCapacity []int, gpuMememUsed []int) error {
 	node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	if val, ok := node.Status.Capacity[gpu0MemCapacity]; ok {
-		if val.Value() == int64(gpuMemCapacity[0]) {
-			log.Infof("No need to update Capacity %s", gpu0MemCapacity)
+	memCapacityJson, _ := json.Marshal(gpuMemCapacity)
+	memUsedJson, _ := json.Marshal(gpuMememUsed)
+
+	if val, ok := node.Annotations[memCapacity]; ok {
+		if val == string(memCapacityJson) {
+			log.Infof("No need to update %s", memCapacity)
 			return nil
 		}
 	}
-	newNode := node.DeepCopy()
-	newNode.Status.Capacity[gpu0MemCapacity] = *resource.NewQuantity(int64(gpuMemCapacity[0]), resource.DecimalSI)
-	newNode.Status.Allocatable[gpu0MemUsed] = *resource.NewQuantity(int64(gpuMemUsed[0]), resource.DecimalSI)
-
-	if len(gpuMemCapacity) > 1 {
-		if val, ok := node.Status.Capacity[gpu1MemCapacity]; ok {
-			if val.Value() == int64(gpuMemCapacity[1]) {
-				log.Infof("No need to update Capacity %s", gpu1MemCapacity)
-				return nil
-			}
+	if val, ok := node.Annotations[memUsed]; ok {
+		if val == string(memUsedJson) {
+			log.Infof("No need to update %s", memUsed)
+			return nil
 		}
-		newNode.Status.Capacity[gpu1MemCapacity] = *resource.NewQuantity(int64(gpuMemCapacity[1]), resource.DecimalSI)
-		newNode.Status.Allocatable[gpu1MemUsed] = *resource.NewQuantity(int64(gpuMemUsed[1]), resource.DecimalSI)
 	}
+
+	newNode := node.DeepCopy()
+	newNode.Annotations[memCapacity] = string(memCapacityJson)
+	newNode.Annotations[memUsed] = string(memUsedJson)
+
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
 	if err != nil {
-		log.Infof("Failed to update capacity %s.", gpu0MemCapacity)
+		log.Infof("Failed to update %s.", memCapacity)
 	} else {
-		log.Infof("Updated capacity %s successfully.", gpu0MemUsed)
+		log.Infof("Updated  %s successfully.", memUsed)
 	}
 	return err
 }
@@ -143,31 +143,21 @@ func patchGPUUtil(gpuUtil []int) error {
 	if err != nil {
 		return err
 	}
-
-	if val, ok := node.Status.Allocatable[gpu0Utilization]; ok {
-		if (100 - val.Value()) == (100 - int64(gpuUtil[0])) {
-			log.Infof("No need to update gpu 0 util %s", string(gpuUtil[0]))
+	gpuUtilJson, _ := json.Marshal(gpuUtil)
+	if val, ok := node.Annotations[gpuUtilization]; ok {
+		if val == string(gpuUtilJson) {
+			log.Infof("No need to update %s", gpuUtilization)
 			return nil
 		}
 	}
 	newNode := node.DeepCopy()
-	newNode.Status.Allocatable[gpu0Utilization] = *resource.NewQuantity(int64(gpuUtil[0]), resource.DecimalSI)
-
-	if len(gpuUtil) > 1 {
-		if val, ok := node.Status.Allocatable[gpu1Utilization]; ok {
-			if (100 - val.Value()) == (100 - int64(gpuUtil[1])) {
-				log.Infof("No need to update gpu 1 util %s", string(gpuUtil[1]))
-				return nil
-			}
-		}
-		newNode.Status.Allocatable[gpu1Utilization] = *resource.NewQuantity(int64(gpuUtil[1]), resource.DecimalSI)
-	}
+	newNode.Annotations[gpuUtilization] = string(gpuUtilJson)
 
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
 	if err != nil {
-		log.Infof("Failed to update gpu util %s.", gpu0Utilization)
+		log.Infof("Failed to update %s.", gpuUtilization)
 	} else {
-		log.Infof("Updated gpu util %s successfully.", gpu0Utilization)
+		log.Infof("Updated %s successfully.", gpuUtilization)
 	}
 	return err
 }
@@ -180,62 +170,43 @@ func patchMemUtil(memUtil []int) error {
 	if err != nil {
 		return err
 	}
-
-	if val, ok := node.Status.Allocatable[mem0Utilization]; ok {
-		if (100 - val.Value()) == (100 - int64(memUtil[0])) {
-			log.Infof("No need to update gpu 0 memory util %s", memUtil)
+	memUtilJson, _ := json.Marshal(memUtil)
+	if val, ok := node.Annotations[memUtilization]; ok {
+		if val == string(memUtilJson) {
+			log.Infof("No need to update %s", memUtilization)
 			return nil
 		}
 	}
 
 	newNode := node.DeepCopy()
-	newNode.Status.Allocatable[mem0Utilization] = *resource.NewQuantity(int64(memUtil[0]), resource.DecimalSI)
-	if len(memUtil) > 1 {
-		if val, ok := node.Status.Allocatable[mem1Utilization]; ok {
-			if (100 - val.Value()) == (100 - int64(memUtil[1])) {
-				log.Infof("No need to update gpu 1 memory util %s", memUtil[1])
-				return nil
-			}
-		}
-		newNode.Status.Allocatable[mem1Utilization] = *resource.NewQuantity(int64(memUtil[1]), resource.DecimalSI)
-	}
+	newNode.Annotations[memUtilization] = string(memUtilJson)
 
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
 	if err != nil {
-		log.Infof("Failed to update gpu memory %s.", mem0Utilization)
+		log.Infof("Failed to update %s.", memUtilization)
 	} else {
-		log.Infof("Updated gpu memory %s successfully.", mem1Utilization)
+		log.Infof("Updated  %s successfully.", memUtilization)
 	}
 	return err
 }
 
 //TODO: patch GPU Processes
-func patchProcesses(GPUProcess [][]uint) error {
+func patchProcesses(GPUProcess [][]ProcessDetail) error {
 	log.Infof("# : patch gpu process: %v", GPUProcess)
 	node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	GPUProcessJson, _ := json.Marshal(GPUProcess[0])
-	if val, ok := node.Status.Allocatable[gpu0Processes]; ok {
-		if string(val.Value()) == string(GPUProcessJson) {
-			log.Infof("No need to update gpu 0 processes %s", string(GPUProcessJson[0]))
+	GPUProcessJson, _ := json.Marshal(GPUProcess)
+	if val, ok := node.Annotations[gpuProcesses]; ok {
+		if val == string(GPUProcessJson) {
+			log.Infof("No need to update %s", string(GPUProcessJson))
 			return nil
 		}
 	}
 	newNode := node.DeepCopy()
-	newNode.Annotations[gpu0Processes] = string(GPUProcessJson)
-
-	if len(GPUProcess) > 1 {
-		GPU1ProcessJson, _ := json.Marshal(GPUProcess[1])
-		if val, ok := node.Status.Allocatable[gpu1Processes]; ok {
-			if string(val.Value()) == string(GPU1ProcessJson) {
-				log.Infof("No need to update gpu 1 processes %s", GPU1ProcessJson)
-				return nil
-			}
-		}
-		newNode.Annotations[gpu1Processes] = string(GPU1ProcessJson)
-	}
+	log.Infof(string(GPUProcessJson))
+	newNode.Annotations[gpuProcesses] = string(GPUProcessJson)
 
 	_, _, err = nodeutil.PatchNodeStatus(clientset.CoreV1(), types.NodeName(nodeName), node, newNode)
 	if err != nil {

@@ -54,14 +54,13 @@ func NewNvidiaDevicePlugin(mps, healthCheck, queryKubelet bool, client *client.K
 	}
 
 	var GPUMemCapacity, GPUMemUsed, GPUUtils, MemUtils []int
-	var Processes [][]uint
+	var Processes [][]ProcessDetail
 
 	for _, item := range gpuStatus {
 		GPUMemCapacity = append(GPUMemCapacity, int(item.memCapacity))
 		GPUMemUsed = append(GPUMemUsed, int(item.memUsed))
 		GPUUtils = append(GPUUtils, int(item.gpuUtil))
 		MemUtils = append(MemUtils, int(item.memUtil))
-		Processes = append(Processes, item.process)
 		Processes = append(Processes, item.process)
 	}
 

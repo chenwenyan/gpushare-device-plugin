@@ -12,6 +12,8 @@ FROM debian:bullseye-slim
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
+# ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/cuda/bin
+RUN apt-get update && apt-get install -y procps
 
 COPY --from=build /go/bin/gpushare-device-plugin-v2 /usr/bin/gpushare-device-plugin-v2
 

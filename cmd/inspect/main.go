@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	resourceName         = "aliyun.com/gpu-mem"
-	countName            = "aliyun.com/gpu-count"
+	resourceName         = "gpushare/gpu-mem"
+	countName            = "gpushare/gpu-count"
 	gpuCountKey          = "aliyun.accelerator/nvidia_count"
 	cardNameKey          = "aliyun.accelerator/nvidia_name"
 	gpuMemKey            = "aliyun.accelerator/nvidia_mem"
@@ -21,8 +21,6 @@ const (
 	envPodGPUMemory        = "ALIYUN_COM_GPU_MEM_POD"
 	envTOTALGPUMEMORY      = "ALIYUN_COM_GPU_MEM_DEV"
 	gpushareAllocationFlag = "scheduler.framework.gpushare.allocation"
-	gpuUtilization         = "aliyun.com/gpu-util"
-	memUtilization         = "aliyun.com/emm-util"
 )
 
 func init() {

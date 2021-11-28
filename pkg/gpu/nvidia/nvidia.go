@@ -2,6 +2,8 @@ package nvidia
 
 import (
 	"fmt"
+	"os/exec"
+	"strconv"
 	"strings"
 
 	log "github.com/golang/glog"
@@ -23,7 +25,13 @@ type GPUStatus struct {
 	memUsed     uint
 	gpuUtil     uint
 	memUtil     uint
-	process     []uint
+	process     []ProcessDetail
+}
+
+type ProcessDetail struct {
+	PID        uint
+	Name       string
+	MemoryUsed uint64
 }
 
 func check(err error) {
@@ -59,6 +67,22 @@ func getDeviceCount() uint {
 	return n
 }
 
+func getProcessInfo(pro nvml.ProcessInfo) ProcessDetail {
+	var processDetail ProcessDetail
+	pid := strconv.Itoa(int(pro.PID))
+	cmd := exec.Command("cat", "/root/proc/"+pid+"/cmdline")
+	out, err := cmd.Output()
+	log.Infof("output: %v", string(out))
+	check(err)
+	name := strings.Trim(string(out), " python")
+	processDetail = ProcessDetail{
+		PID:        pro.PID,
+		Name:       name,
+		MemoryUsed: pro.MemoryUsed,
+	}
+	return processDetail
+}
+
 func getDevices() ([]*pluginapi.Device, map[string]uint, []GPUStatus) {
 	n, err := nvml.GetDeviceCount()
 	check(err)
@@ -85,14 +109,14 @@ func getDevices() ([]*pluginapi.Device, map[string]uint, []GPUStatus) {
 		check(err)
 
 		// GPU util and Mem util
-		var processPids []uint
+		var processes []ProcessDetail
 		for _, item := range status.Processes {
 			log.Infof("# process: %T", item.Type.String())
 			if item.Type.String() == "C" {
-				pid := item.PID
-				processPids = append(processPids, pid)
+				processes = append(processes, getProcessInfo(item))
 			}
 		}
+		log.Infof("process info: %v", status.Processes)
 		memCapacity := uint(*status.Memory.Global.Free) + uint(*status.Memory.Global.Used)
 		gpuStatus = append(gpuStatus, GPUStatus{
 			UID:         id,
@@ -100,7 +124,7 @@ func getDevices() ([]*pluginapi.Device, map[string]uint, []GPUStatus) {
 			memUsed:     uint(*status.Memory.Global.Used),
 			gpuUtil:     uint(*status.Utilization.GPU),
 			memUtil:     uint(*status.Utilization.Memory),
-			process:     processPids,
+			process:     processes,
 		})
 
 		for j := uint(0); j < getGPUMemory(); j++ {
